@@ -1,0 +1,15 @@
+<launch>
+
+  <node pkg="image_enhance" name="image_enhance" type="image_enhance_node" clear_params="true" output="screen">
+
+    <param name="enable_dyn_reconf" value="true" type="bool" />
+    
+    <param name="topic_image_input" value="/cam0/cam0 " type="str" />
+    <param name="topic_image_output" value="/cam0/cam0/enhance" type="str" />
+    <param name="use_dehaze" value="true" type="bool" />
+    <param name="scale_factor" value="5" type="int" />
+
+  </node>
+
+
+</launch>
