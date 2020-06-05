@@ -44,8 +44,8 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 		}
 
 		cv::resize(image_in, image_in,
-				   cv::Size(image_in.cols / (double)MAX(1, _scale_factor), image_in.rows / (double)MAX(1, _scale_factor)), 0, 0,
-				   CV_INTER_AREA);
+				   cv::Size(image_in.cols /  _scale_factor, image_in.rows / _scale_factor), 0, 0,
+				   CV_INTER_LINEAR);
 
 		image_in = cv::Scalar::all(255) - image_in;
 

@@ -1,13 +1,17 @@
 <launch>
+  <arg name="topic_image_input" default="/cam0/cam0" />
+
+  <node name="image_throttler" type="throttle" pkg="topic_tools" args="messages 
+  $(arg topic_image_input) 3 $(arg topic_image_input)/throttled" />
 
   <node pkg="image_enhance" name="image_enhance" type="image_enhance_node" clear_params="true" output="screen">
 
     <param name="enable_dyn_reconf" value="true" type="bool" />
     
-    <param name="topic_image_input" value="/cam0/cam0 " type="str" />
+    <param name="topic_image_input" value="$(arg topic_image_input)/throttled" type="str" />
     <param name="topic_image_output" value="/cam0/cam0/enhance" type="str" />
     <param name="use_dehaze" value="true" type="bool" />
-    <param name="scale_factor" value="5" type="int" />
+    <param name="scale_factor" value="3" type="int" />
 
   </node>
 
