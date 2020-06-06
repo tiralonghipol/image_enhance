@@ -14,7 +14,7 @@
     <param name="scale_factor" value="2" type="int" />
     
     <param name="dehaze_radius" value="7" type="int" />
-    <param name="dehaze_omega" value="0.8" type="double" />
+    <param name="dehaze_omega" value="0.9" type="double" />
     <param name="dehaze_t0" value="0.1" type="double" />
     <param name="dehaze_r" value="30" type="int" />
     <param name="dehaze_eps" value="0.01" type="double" />

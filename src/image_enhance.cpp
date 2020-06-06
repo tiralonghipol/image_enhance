@@ -1,5 +1,3 @@
-#include <cstdio>
-#include <cstdlib>
 #include "image_enhance/image_enhance.h"
 #include "image_enhance/dehaze.h"
 #include "image_enhance/guided_filter.h"
@@ -61,6 +59,7 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 				   cv::Size(image_in.cols / _scale_factor, image_in.rows / _scale_factor), 0, 0,
 				   CV_INTER_LINEAR);
 
+		clock_t start = clock();
 		image_in = cv::Scalar::all(255) - image_in;
 
 		Mat image_out(image_in.rows, image_in.cols, CV_8UC3);
@@ -74,10 +73,11 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 		{
 			ROS_WARN_ONCE("Dehazing Activated");
 			hr.Process(indata, outdata, image_in.cols, image_in.rows, image_in.channels());
-			// cv::imshow("image_out", image_out);
-			// cv::waitKey(0);
 		}
 		image_out = cv::Scalar::all(255) - image_out;
+
+		clock_t end = clock();
+		cout << "Time consumed : " << (float)(end - start) / CLOCKS_PER_SEC << "s" << endl;
 
 		sensor_msgs::Image::Ptr output = cv_bridge::CvImage(msg->header, "bgr8", image_out).toImageMsg();
 		if (_pub_image.getNumSubscribers() > 0)
