@@ -13,6 +13,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <dynamic_reconfigure/server.h>
+#include <image_enhance/ImageEnhanceConfig.h>
 
 using namespace std;
 using namespace cv;
@@ -24,6 +26,10 @@ public:
     imageEnhance(ros::NodeHandle &n, const std::string &s, int bufSize);
     ~imageEnhance();
     void callback_image_input(const sensor_msgs::ImageConstPtr &msg);
+    void callback_dyn_reconf(image_enhance::ImageEnhanceConfig &config, uint32_t level);
+    // dynamic reconfigure
+    dynamic_reconfigure::Server<image_enhance::ImageEnhanceConfig> _dr_srv;
+    dynamic_reconfigure::Server<image_enhance::ImageEnhanceConfig>::CallbackType _dyn_rec_cb;
 
 private:
     // publishers
@@ -37,4 +43,6 @@ private:
     bool _enable_dyn_reconf;
     bool _use_dehaze;
     int _scale_factor;
+
+    
 };

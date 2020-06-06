@@ -6,13 +6,27 @@
 
 imageEnhance::imageEnhance(ros::NodeHandle &n, const std::string &s, int bufSize)
 {
-
 	// parameters
 	n.getParam("enable_dyn_reconf", _enable_dyn_reconf);
+
+	if (_enable_dyn_reconf)
+	{
+		// dynamic reconfigure
+		_dyn_rec_cb = boost::bind(&imageEnhance::callback_dyn_reconf, this, _1, _2);
+		_dr_srv.setCallback(_dyn_rec_cb);
+	}
+
+	// ros parameters
 	n.getParam("topic_image_input", _topic_image_input);
 	n.getParam("topic_image_output", _topic_image_output);
 	n.getParam("use_dehaze", _use_dehaze);
 	n.getParam("scale_factor", _scale_factor);
+	// filter paramters
+	n.getParam("dehaze_radius", dehaze::_radius);
+	n.getParam("dehaze_omega", dehaze::_omega);
+	n.getParam("dehaze_t0", dehaze::_t0);
+	n.getParam("dehaze_r", dehaze::_r);
+	n.getParam("dehaze_eps", dehaze::_eps);
 
 	image_transport::ImageTransport it(n);
 	// subscribers
@@ -44,7 +58,7 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 		}
 
 		cv::resize(image_in, image_in,
-				   cv::Size(image_in.cols /  _scale_factor, image_in.rows / _scale_factor), 0, 0,
+				   cv::Size(image_in.cols / _scale_factor, image_in.rows / _scale_factor), 0, 0,
 				   CV_INTER_LINEAR);
 
 		image_in = cv::Scalar::all(255) - image_in;
@@ -53,12 +67,12 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 		unsigned char *indata = image_in.data;
 		unsigned char *outdata = image_out.data;
 		// ROS_INFO("callback_image_in");
-		CHazeRemoval hr;
+		dehaze::CHazeRemoval hr;
 		hr.InitProc(image_in.cols, image_in.rows, image_in.channels());
 
 		if (_use_dehaze)
 		{
-			ROS_WARN_ONCE("Dehaze");
+			ROS_WARN_ONCE("Dehazing Activated");
 			hr.Process(indata, outdata, image_in.cols, image_in.rows, image_in.channels());
 			// cv::imshow("image_out", image_out);
 			// cv::waitKey(0);
@@ -73,4 +87,17 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 	{
 		ROS_WARN("Error: %s %s %s %i", e.err.c_str(), e.func.c_str(), e.file.c_str(), e.line);
 	}
+}
+
+void imageEnhance::callback_dyn_reconf(image_enhance::ImageEnhanceConfig &config, uint32_t level)
+{
+	ROS_WARN_ONCE("Dynamic Reconfigure Triggered");
+
+	_scale_factor = config.scale_factor;
+	dehaze::_radius = config.dehaze_radius;
+	dehaze::_omega = config.dehaze_omega;
+	dehaze::_t0 = config.dehaze_t0;
+	dehaze::_r = config.dehaze_r;
+	dehaze::_eps = config.dehaze_eps;
+	// ROS_INFO("dehaze_radius = %d", dehaze::_radius);
 }
