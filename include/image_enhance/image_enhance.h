@@ -43,8 +43,9 @@ private:
     string _topic_image_input;
     string _topic_image_output;
     bool _enable_dyn_reconf;
-    bool _use_dehaze;
     int _scale_factor;
+    bool _enable_dehaze;
+    bool _enable_clahe;
 
     
 };

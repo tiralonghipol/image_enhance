@@ -38,11 +38,12 @@ include_directories(
 add_library(${PROJECT_NAME} src/${PROJECT_NAME}.cpp)
 add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+# clahe
+add_library(clahe src/clahe.cpp)
+add_dependencies(clahe ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 # dehaze
 add_library(dehaze src/dehaze.cpp)
 add_dependencies(dehaze ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-# guided_filter
 add_library(guided_filter src/guided_filter.cpp)
 add_dependencies(guided_filter ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
@@ -61,6 +62,7 @@ ${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
 ${catkin_LIBRARIES}
 ${OpenCV_LIBRARIES}
+clahe
 dehaze
 guided_filter
 )
