@@ -53,9 +53,15 @@ namespace dehaze
 		Mat *p_gtran = new Mat(rows, cols, CV_64FC1);
 		Vec3d *p_Alight = new Vec3d();
 
+		clock_t start = clock();
 		get_dark_channel(p_src, tmp_vec, rows, cols, channels, radius);
+		// std::cout << "Dark Channel proc time: " << (float)(clock() - start) / CLOCKS_PER_SEC << std::endl;
+		start = clock();
 		get_air_light(p_src, tmp_vec, p_Alight, rows, cols, channels);
+		// std::cout << "Get Air Light proc time: " << (float)(clock() - start) / CLOCKS_PER_SEC << std::endl;
+		start = clock();
 		get_transmission(p_src, p_tran, p_Alight, rows, cols, channels, radius = 7, omega);
+		std::cout << "Get Transmission proc time: " << (float)(clock() - start) / CLOCKS_PER_SEC << std::endl;
 		guided_filter(p_src, p_tran, p_gtran, r, eps);
 		recover(p_src, p_gtran, p_dst, p_Alight, rows, cols, channels, t0);
 		assign_data(outdata, p_dst, rows, cols, channels);
@@ -70,34 +76,88 @@ namespace dehaze
 
 	void get_dark_channel(const cv::Mat *p_src, std::vector<Pixel> &tmp_vec, int rows, int cols, int channels, int radius)
 	{
-		for (int i = 0; i < rows; i++)
+		// new algorithm (8ms per frame)
+		// create an array to store the minimum pixel values (min of each rgb)
+		uint8_t pix_mins[rows*cols];
+		// for each pixel, calculate the min rgb
+		for (uint16_t row = 0; row < rows; ++row)
 		{
-			for (int j = 0; j < cols; j++)
+			for (uint16_t col = 0; col < cols; ++col)
 			{
-				int rmin = cv::max(0, i - radius);
-				int rmax = cv::min(i + radius, rows - 1);
-				int cmin = cv::max(0, j - radius);
-				int cmax = cv::min(j + radius, cols - 1);
-				double min_val = 255;
-				for (int x = rmin; x <= rmax; x++)
-				{
-					for (int y = cmin; y <= cmax; y++)
-					{
-						cv::Vec3b tmp = p_src->ptr<cv::Vec3b>(x)[y];
-						uchar b = tmp[0];
-						uchar g = tmp[1];
-						uchar r = tmp[2];
-						uchar minpixel = b > g ? ((g > r) ? r : g) : ((b > r) ? r : b);
-						min_val = cv::min((double)minpixel, min_val);
-					}
-				}
-				//p_dark->ptr<double>(i)[j] = min_val;
-				tmp_vec.push_back(Pixel(i, j, uchar(min_val)));
+				uint16_t px_idx = (row*cols) + col;
+				uint8_t* ptr = p_src->data + px_idx;
+				pix_mins[px_idx] = std::min({ptr[0], ptr[1], ptr[2]});
 			}
 		}
+		// create an array to store the min row values (min of each row of neighbors)
+		uint8_t row_mins[rows*cols];
+		// for each pixel, calculate the min of the row neighbors
+		for (uint16_t row = 0; row < rows; ++row)
+		{
+			for (uint16_t col = 0; col < cols; ++col)
+			{
+				uint16_t min_row = std::max(0, row-radius);
+				uint16_t max_row = std::min(rows, row+radius);
+				uint16_t px_idx = (row*cols) + col;
+				row_mins[px_idx] = 0xff;
+				// loop over the bytes in the row
+				for(uint16_t k = min_row; k < max_row; ++k)
+				{
+					uint16_t neighbor_idx = (k*cols) + col;
+					row_mins[px_idx] = std::min(pix_mins[neighbor_idx], row_mins[px_idx]);
+				}
+			}
+		}
+		// for each pixel, calculate the min of the column neighbors
+		for (uint16_t row = 0; row < rows; ++row)
+		{
+			for (uint16_t col = 0; col < cols; ++col)
+			{
+				uint16_t min_col = std::max(0, col-radius);
+				uint16_t max_col = std::min(cols, col+radius);
+				uint8_t min_val = 0xff;
+				// iterate over the column
+				for(uint16_t k = min_col; k < max_col; ++k)
+				{
+					uint16_t idx = k*cols + col;
+					min_val = std::min(row_mins[idx], min_val);
+				}
+				tmp_vec.push_back(Pixel(row, col, uchar(min_val)));
+			}
+		}
+		// I'm not sure why they have to be sorted yet...
 		std::sort(tmp_vec.begin(), tmp_vec.end(), sort_fun);
+
+		// old algorithm (50mSec per frame)
+		// for (int i = 0; i < rows; i++)
+		// {
+		// 	for (int j = 0; j < cols; j++)
+		// 	{
+		// 		int rmin = cv::max(0, i - radius);
+		// 		int rmax = cv::min(i + radius, rows - 1);
+		// 		int cmin = cv::max(0, j - radius);
+		// 		int cmax = cv::min(j + radius, cols - 1);
+		// 		double min_val = 255;
+		// 		for (int x = rmin; x <= rmax; x++)
+		// 		{
+		// 			for (int y = cmin; y <= cmax; y++)
+		// 			{
+		// 				cv::Vec3b tmp = p_src->ptr<cv::Vec3b>(x)[y];
+		// 				uchar b = tmp[0];
+		// 				uchar g = tmp[1];
+		// 				uchar r = tmp[2];
+		// 				uchar minpixel = b > g ? ((g > r) ? r : g) : ((b > r) ? r : b);
+		// 				min_val = cv::min((double)minpixel, min_val);
+		// 			}
+		// 		}
+		// 		//p_dark->ptr<double>(i)[j] = min_val;
+		// 		tmp_vec.push_back(Pixel(i, j, uchar(min_val)));
+		// 	}
+		// }
+		// std::sort(tmp_vec.begin(), tmp_vec.end(), sort_fun);
 	}
 
+	// This function is pretty fast...
 	void get_air_light(const cv::Mat *p_src, std::vector<Pixel> &tmp_vec, cv::Vec3d *p_Alight, int rows, int cols, int channels)
 	{
 		int num = int(rows * cols * 0.001);
