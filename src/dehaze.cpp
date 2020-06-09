@@ -160,7 +160,7 @@ namespace dehaze
 		for (int i = 0; i < rows; ++i)
 		{
 			for (int j = 0; j < cols; ++j)
-			{
+			{ 
 				uint16_t min_j = std::max(0,    j - radius);
 				uint16_t max_j = std::min(cols, j + radius);
 				uchar min_val = 0xff;
