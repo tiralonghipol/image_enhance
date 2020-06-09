@@ -45,5 +45,6 @@ namespace dehaze
 	void guided_filter(const cv::Mat *p_src, const cv::Mat *p_tran, cv::Mat *p_gtran, int r, double eps);
 	void recover(const cv::Mat *p_src, const cv::Mat *p_gtran, cv::Mat *p_dst, cv::Vec3d *p_Alight, int rows, int cols, int channels, double t0);
 	void assign_data(unsigned char *outdata, const cv::Mat *p_dst, int rows, int cols, int channels);
+	void get_min_vect(const uint8_t *pix_mins, std::vector<Pixel> &tmp_vec, uint16_t rows, uint16_t cols, uint16_t radius);
 } // namespace dehaze
 #endif // !HAZE_REMOVAL_H
