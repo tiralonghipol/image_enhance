@@ -173,6 +173,8 @@ namespace dehaze
 				tmp_vec.push_back(Pixel(i, j, uchar(min_val)));
 			}
 		}
+		delete row_mins;
+		delete pix_mins;
 		#endif
 		std::sort(tmp_vec.begin(), tmp_vec.end(), sort_fun);
 	}
@@ -276,6 +278,8 @@ namespace dehaze
 					p_tran->ptr<double>(i)[j] = 1 - omega * min_val;
 				}
 			}	
+			delete row_mins;
+			delete pix_mins;
 		#endif
 
 	}
