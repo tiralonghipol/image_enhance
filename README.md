@@ -17,4 +17,5 @@ A dynamic reconfigure server can be called from the launch file to test differen
 
 ### Example Output
 
-
+![img](https://github.com/tiralonghipol/image_enhance/blob/master/imgs/dehaze.png?raw=true
+ "Example of image_enhance output")
