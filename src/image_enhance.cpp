@@ -10,7 +10,6 @@ imageEnhance::imageEnhance(ros::NodeHandle &n, const std::string &s, int bufSize
 
 	if (_enable_dyn_reconf)
 	{
-		// dynamic reconfigure
 		_dyn_rec_cb = boost::bind(&imageEnhance::callback_dyn_reconf, this, _1, _2);
 		_dr_srv.setCallback(_dyn_rec_cb);
 	}
@@ -92,7 +91,7 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 			ROS_WARN_ONCE("Clahe Disabled");
 
 		clock_t end = clock();
-		cout << "Time consumed : " << (float)(end - start) / CLOCKS_PER_SEC << "s" << endl;
+		// cout << "Time consumed : " << (float)(end - start) / CLOCKS_PER_SEC << "s" << endl;
 
 		sensor_msgs::Image::Ptr output = cv_bridge::CvImage(msg->header, "bgr8", image_out).toImageMsg();
 		if (_pub_image.getNumSubscribers() > 0)
