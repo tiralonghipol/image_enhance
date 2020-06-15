@@ -56,6 +56,7 @@ namespace dehaze
 		clock_t start = clock();
 		clock_t proc_start = start;
 
+
 		if(old_alg) get_dark_channel_old(p_src, tmp_vec, rows, cols, channels, radius);
 		else get_dark_channel(p_src, tmp_vec, rows, cols, channels, radius);
 
@@ -286,7 +287,6 @@ namespace dehaze
 				p_tran->ptr<double>(i)[j] = 1 - omega * min_val;
 			}
 		}	
-		
 	}
 	void guided_filter(const cv::Mat *p_src, const cv::Mat *p_tran, cv::Mat *p_gtran, int r, double eps)
 	{

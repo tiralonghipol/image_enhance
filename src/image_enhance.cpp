@@ -12,7 +12,6 @@ imageEnhance::imageEnhance(ros::NodeHandle &n, const std::string &s, int bufSize
 
 	if (_enable_dyn_reconf)
 	{
-		// dynamic reconfigure
 		_dyn_rec_cb = boost::bind(&imageEnhance::callback_dyn_reconf, this, _1, _2);
 		_dr_srv.setCallback(_dyn_rec_cb);
 	}
