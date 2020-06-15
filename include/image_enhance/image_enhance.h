@@ -36,6 +36,7 @@ public:
 private:
     // publishers
     image_transport::Publisher _pub_image;
+    image_transport::Publisher _old_pub_image;
     // subscribers
     image_transport::Subscriber _sub_image;
 
