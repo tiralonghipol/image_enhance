@@ -65,7 +65,9 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 				   CV_INTER_LINEAR);
 
 		Mat image_out(image_in.rows, image_in.cols, CV_8UC3);
+		Mat temp_image_out(image_in.rows, image_in.cols, CV_8UC3);
 		image_out = image_in;
+		temp_image_out = image_in;
 
 		clock_t start = clock();
 
@@ -75,13 +77,28 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 			image_in = cv::Scalar::all(255) - image_in;
 			unsigned char *indata = image_in.data;
 			unsigned char *outdata = image_out.data;
+			unsigned char *temp_outdata = temp_image_out.data;
 			dehaze::CHazeRemoval hr;
 			hr.InitProc(image_in.cols, image_in.rows, image_in.channels());
-			hr.Process(indata, outdata, image_in.cols, image_in.rows, image_in.channels());
+			hr.Process(indata, outdata, image_in.cols, image_in.rows, image_in.channels(), true);
+			hr.Process(indata, temp_outdata, image_in.cols, image_in.rows, image_in.channels(), false);
 			image_out = cv::Scalar::all(255) - image_out;
+			temp_image_out = cv::Scalar::all(255) - temp_image_out;
+			Mat diff_image(image_in.rows, image_in.cols, CV_8UC3);
+			cv::subtract(image_out, temp_image_out, diff_image);
+			auto diff_sum = cv::sum(diff_image);
+			for(int i = 0; i < diff_sum.channels; i++)
+			{
+				if(diff_sum[i] != 0)
+				{
+					ROS_ERROR("Mismatch of old algorithm vs new algorithm output!");
+				}
+			}
 		}
 		else
+		{
 			ROS_WARN_ONCE("Dehaze Disabled");
+		}
 		if (_enable_clahe)
 		{
 			ROS_WARN_ONCE("Clahe Enabled");
@@ -89,10 +106,11 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 			image_out = cr.Process(image_in);
 		}
 		else
+		{
 			ROS_WARN_ONCE("Clahe Disabled");
-
+		}
 		clock_t end = clock();
-		cout << "Time consumed : " << (float)(end - start) / CLOCKS_PER_SEC << "s" << endl;
+		cout << "Total Time consumed : " << (float)(end - start) / CLOCKS_PER_SEC << "s" << endl;
 
 		sensor_msgs::Image::Ptr output = cv_bridge::CvImage(msg->header, "bgr8", image_out).toImageMsg();
 		if (_pub_image.getNumSubscribers() > 0)
