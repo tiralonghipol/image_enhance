@@ -3,6 +3,8 @@
 #include "image_enhance/guided_filter.h"
 #include "image_enhance/clahe.h"
 
+#define TEST_OPTIMIZATIONS false
+
 imageEnhance::imageEnhance(ros::NodeHandle &n, const std::string &s, int bufSize)
 {
 	// parameters
@@ -35,6 +37,9 @@ imageEnhance::imageEnhance(ros::NodeHandle &n, const std::string &s, int bufSize
 	_sub_image = it.subscribe(_topic_image_input, 1, &imageEnhance::callback_image_input, this);
 	// publishers
 	_pub_image = it.advertise(_topic_image_output, 1);
+	#if TEST_OPTIMIZATIONS
+	_old_pub_image = it.advertise(_topic_image_output + "_OLD_ALG", 1);
+	#endif
 }
 
 imageEnhance::~imageEnhance()
@@ -64,23 +69,56 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 				   CV_INTER_LINEAR);
 
 		Mat image_out(image_in.rows, image_in.cols, CV_8UC3);
-		image_out = image_in;
+		Mat image_out_OLD_ALG(image_in.rows, image_in.cols, CV_8UC3);
+		if(!_enable_dehaze && !_enable_clahe)
+		{
+			image_out = image_in;
+			image_out_OLD_ALG = image_in;
+		}
+
 
 		clock_t start = clock();
 
 		if (_enable_dehaze)
 		{
-			ROS_WARN_ONCE("Dehaze Enabled");
-			image_in = cv::Scalar::all(255) - image_in;
-			unsigned char *indata = image_in.data;
-			unsigned char *outdata = image_out.data;
-			dehaze::CHazeRemoval hr;
-			hr.InitProc(image_in.cols, image_in.rows, image_in.channels());
-			hr.Process(indata, outdata, image_in.cols, image_in.rows, image_in.channels());
-			image_out = cv::Scalar::all(255) - image_out;
+			#if TEST_OPTIMIZATIONS
+				ROS_WARN_ONCE("Dehaze Enabled");
+				clock_t new_alg_start = clock();
+				image_in = cv::Scalar::all(255) - image_in;
+				unsigned char *indata = image_in.data;
+				unsigned char *outdata = image_out.data;
+				dehaze::CHazeRemoval hr;
+				hr.InitProc(image_in.cols, image_in.rows, image_in.channels());
+				hr.Process(indata, outdata, image_in.cols, image_in.rows, image_in.channels(), false);
+				image_out = cv::Scalar::all(255) - image_out;
+				ROS_INFO("Dehaze Process Time consumed : %f sec", (float)(clock() - new_alg_start) / CLOCKS_PER_SEC );
+
+
+				clock_t old_alg_start = clock();
+				indata = image_in.data;
+				unsigned char *outdata_OLD_ALG = image_out_OLD_ALG.data;
+				dehaze::CHazeRemoval hr_OLD_ALG;
+				hr_OLD_ALG.InitProc(image_in.cols, image_in.rows, image_in.channels());
+				hr_OLD_ALG.Process(indata, outdata_OLD_ALG, image_in.cols, image_in.rows, image_in.channels(), true);
+				image_out_OLD_ALG = cv::Scalar::all(255) - image_out_OLD_ALG;
+				ROS_INFO("Old Dehaze Process Time consumed : %f sec", (float)(clock() - old_alg_start) / CLOCKS_PER_SEC );
+			#else
+				ROS_WARN_ONCE("Dehaze Enabled");
+				clock_t alg_start = clock();
+				image_in = cv::Scalar::all(255) - image_in;
+				unsigned char *indata = image_in.data;
+				unsigned char *outdata = image_out.data;
+				dehaze::CHazeRemoval hr;
+				hr.InitProc(image_in.cols, image_in.rows, image_in.channels());
+				hr.Process(indata, outdata, image_in.cols, image_in.rows, image_in.channels(), false);
+				image_out = cv::Scalar::all(255) - image_out;
+				ROS_DEBUG("Dehaze Process Time consumed : %f sec", (float)(clock() - alg_start) / CLOCKS_PER_SEC );
+			#endif
 		}
 		else
+		{
 			ROS_WARN_ONCE("Dehaze Disabled");
+		}
 		if (_enable_clahe)
 		{
 			ROS_WARN_ONCE("Clahe Enabled");
@@ -88,14 +126,23 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 			image_out = cr.Process(image_in);
 		}
 		else
+		{
 			ROS_WARN_ONCE("Clahe Disabled");
-
+		}
 		clock_t end = clock();
-		// cout << "Time consumed : " << (float)(end - start) / CLOCKS_PER_SEC << "s" << endl;
+		ROS_DEBUG("Total Enhance Time consumed : %f sec", (float)(clock() - start) / CLOCKS_PER_SEC );
 
 		sensor_msgs::Image::Ptr output = cv_bridge::CvImage(msg->header, "bgr8", image_out).toImageMsg();
+		#if TEST_OPTIMIZATIONS 
+		sensor_msgs::Image::Ptr old_output = cv_bridge::CvImage(msg->header, "bgr8", image_out_OLD_ALG).toImageMsg(); 
+		#endif
 		if (_pub_image.getNumSubscribers() > 0)
+		{
 			_pub_image.publish(output);
+			#if TEST_OPTIMIZATIONS 
+			_old_pub_image.publish(old_output);
+			#endif
+		}
 	}
 	catch (cv::Exception &e)
 	{
