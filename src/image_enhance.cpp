@@ -36,9 +36,11 @@ imageEnhance::imageEnhance(ros::NodeHandle &n, const std::string &s, int bufSize
 	// subscribers
 	_sub_image = it.subscribe(_topic_image_input, 1, &imageEnhance::callback_image_input, this);
 	// publishers
-	_pub_image = it.advertise(_topic_image_output, 1);
+	m_pub_resized_image = it.advertise(_topic_image_output + "_resized", 1);
+	m_pub_dehaze_image = it.advertise(_topic_image_output + "_dehazed", 1);
+	m_pub_clahe_image = it.advertise(_topic_image_output + "_clahe", 1);
 	#if TEST_OPTIMIZATIONS
-	_old_pub_image = it.advertise(_topic_image_output + "_OLD_ALG", 1);
+		m_pub_dehaze_old_image = it.advertise(_topic_image_output + "_dehazed_old_alg", 1);
 	#endif
 }
 
@@ -57,7 +59,7 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 
 		if (frame.channels() > 1)
 		{
-			image_in = frame;
+			image_in = frame.clone();
 		}
 		else
 		{
@@ -65,23 +67,25 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 		}
 
 		cv::resize(image_in, image_in,
-				   cv::Size(image_in.cols / _scale_factor, image_in.rows / _scale_factor), 0, 0,
-				   CV_INTER_LINEAR);
+					cv::Size(image_in.cols / _scale_factor, image_in.rows / _scale_factor), 
+					0, 0, CV_INTER_LINEAR);
 
 		Mat image_out(image_in.rows, image_in.cols, CV_8UC3);
-		Mat image_out_OLD_ALG(image_in.rows, image_in.cols, CV_8UC3);
 		if(!_enable_dehaze && !_enable_clahe)
 		{
 			image_out = image_in;
-			image_out_OLD_ALG = image_in;
-		}
 
+		}
+		sensor_msgs::Image::Ptr resized_msg = cv_bridge::CvImage(msg->header, "bgr8", image_out).toImageMsg();
+		m_pub_resized_image.publish(resized_msg);
 
 		clock_t start = clock();
 
 		if (_enable_dehaze)
 		{
+
 			#if TEST_OPTIMIZATIONS
+				Mat image_out_OLD_ALG(image_in.rows, image_in.cols, CV_8UC3);
 				ROS_WARN_ONCE("Dehaze Enabled");
 				clock_t new_alg_start = clock();
 				image_in = cv::Scalar::all(255) - image_in;
@@ -102,11 +106,19 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 			#else
 				ROS_WARN_ONCE("Dehaze Enabled");
 				clock_t alg_start = clock();
-				image_in = cv::Scalar::all(255) - image_in;
-				dehaze::CHazeRemoval hr(&image_in, m_omega, m_t0, m_radius, m_r, m_eps);
+				dehaze::CHazeRemoval hr(&(cv::Scalar::all(255) - image_in), m_omega, m_t0, m_radius, m_r, m_eps);
 				hr.Process(image_out);
 				image_out = cv::Scalar::all(255) - image_out;
 				ROS_INFO("Dehaze Process Time consumed : %f sec", (float)(clock() - alg_start) / CLOCKS_PER_SEC );
+			#endif
+				sensor_msgs::Image::Ptr output_msg = cv_bridge::CvImage(msg->header, "bgr8", image_out).toImageMsg();
+				if(m_pub_dehaze_image.getNumSubscribers() > 0)
+				{
+					m_pub_dehaze_image.publish(output_msg);
+				}
+			#if TEST_OPTIMIZATIONS 
+				sensor_msgs::Image::Ptr old_output_msg = cv_bridge::CvImage(msg->header, "bgr8", image_out_OLD_ALG).toImageMsg(); 
+				m_pub_dehaze_old_image.publish(old_output_msg);
 			#endif
 		}
 		else
@@ -118,6 +130,8 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 			ROS_WARN_ONCE("Clahe Enabled");
 			clahe::ClaheRos cr;
 			image_out = cr.Process(image_in);
+			sensor_msgs::Image::Ptr output_msg = cv_bridge::CvImage(msg->header, "bgr8", image_out).toImageMsg();
+			m_pub_clahe_image.publish(output_msg);
 		}
 		else
 		{
@@ -125,18 +139,6 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 		}
 		clock_t end = clock();
 		ROS_DEBUG("Total Enhance Time consumed : %f sec", (float)(clock() - start) / CLOCKS_PER_SEC );
-
-		sensor_msgs::Image::Ptr output = cv_bridge::CvImage(msg->header, "bgr8", image_out).toImageMsg();
-		#if TEST_OPTIMIZATIONS 
-		sensor_msgs::Image::Ptr old_output = cv_bridge::CvImage(msg->header, "bgr8", image_out_OLD_ALG).toImageMsg(); 
-		#endif
-		if (_pub_image.getNumSubscribers() > 0)
-		{
-			_pub_image.publish(output);
-			#if TEST_OPTIMIZATIONS 
-			_old_pub_image.publish(old_output);
-			#endif
-		}
 	}
 	catch (cv::Exception &e)
 	{

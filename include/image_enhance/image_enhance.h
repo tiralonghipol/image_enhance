@@ -35,8 +35,10 @@ public:
 
 private:
     // publishers
-    image_transport::Publisher _pub_image;
-    image_transport::Publisher _old_pub_image;
+    image_transport::Publisher m_pub_resized_image;
+    image_transport::Publisher m_pub_dehaze_image;
+    image_transport::Publisher m_pub_dehaze_old_image;
+    image_transport::Publisher m_pub_clahe_image;
     // subscribers
     image_transport::Subscriber _sub_image;
 
