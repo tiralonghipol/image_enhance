@@ -6,14 +6,14 @@
 
   <node pkg="image_enhance" name="image_enhance" type="image_enhance_node" clear_params="true" output="screen">
 
-    <param name="enable_dyn_reconf" value="false" type="bool" />
+    <param name="enable_dyn_reconf" value="true" type="bool" />
 
     <param name="topic_image_input" value="$(arg topic_image_input)/throttled" type="str" />
     <param name="topic_image_output" value="/cam0/cam0/enhance" type="str" />
 
     <param name="enable_dehaze" value="true" type="bool" />
     
-    <param name="scale_factor" value="2" type="int" />
+    <param name="scale_factor" value="1" type="int" />
 
     <param name="dehaze_radius" value="7" type="int" />
     <param name="dehaze_omega" value="0.86" type="double" />

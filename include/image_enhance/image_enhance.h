@@ -48,5 +48,12 @@ private:
     bool _enable_dehaze;
     bool _enable_clahe;
 
+    // Dehaze Params
+    int m_radius;
+    int m_r;
+    double m_omega;
+    double m_t0;
+    double m_eps;
+
     
 };
