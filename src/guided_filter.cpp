@@ -67,7 +67,6 @@ private:
 
 cv::Mat GuidedFilterImpl::filter(const cv::Mat &p, int depth)
 {
-	std::cout << "Filter Start" << std::endl;
 	cv::Mat p2 = convertTo(p, Idepth);
 
 	cv::Mat result;
@@ -79,17 +78,11 @@ cv::Mat GuidedFilterImpl::filter(const cv::Mat &p, int depth)
 	{
 		std::vector<cv::Mat> pc;
 		cv::split(p2, pc);
-
 		for (std::size_t i = 0; i < pc.size(); ++i)
 			pc[i] = filterSingleChannel(pc[i]);
-
-		std::cout << "Filter Merge" << std::endl;
 		cv::merge(pc, result);
 	}
-
-	std::cout << "Resizing Back to Original Size" << std::endl;
 	cv::resize(result, result, original_image_size, 0,0, CV_INTER_NN);
-
 	return convertTo(result, depth == -1 ? p.depth() : depth);
 }
 

@@ -2,7 +2,7 @@
   <arg name="topic_image_input" default="/cam0/cam0" />
 
   <node name="image_throttler" type="throttle" pkg="topic_tools" args="messages 
-  $(arg topic_image_input) 2 $(arg topic_image_input)/throttled" />
+  $(arg topic_image_input) 10 $(arg topic_image_input)/throttled" />
 
   <node pkg="image_enhance" name="image_enhance" type="image_enhance_node" clear_params="true" output="screen">
 
