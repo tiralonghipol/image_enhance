@@ -56,6 +56,7 @@ private:
     double m_omega;
     double m_t0;
     double m_eps;
+    int m_filter_resize_factor;
 
     
 };

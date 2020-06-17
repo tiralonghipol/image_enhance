@@ -7,12 +7,19 @@
 #define GET_MIN(a,b)   a > b ? b : a
 #define GET_MAX(a,b)   a < b ? b : a
 
-#define SHOW_IMAGE_STEPS true
+#define SHOW_IMAGE_STEPS false
 
 namespace dehaze
 {
+	
+	static cv::Mat boxfilter(const cv::Mat &I, int r)
+	{
+		cv::Mat result;
+		cv::blur(I, result, cv::Size(r, r));
+		return result;
+	}
 	CHazeRemoval::CHazeRemoval(const cv::Mat *in_frame,
-						double omega, double t0, int radius, int r, double eps)
+						double omega, double t0, int radius, int r, double eps, int filter_resize_factor)
 	{
 		m_rows = in_frame->rows;
 		m_cols = in_frame->cols;
@@ -22,7 +29,7 @@ namespace dehaze
 		m_radius = radius;
 		m_r = r;
 		m_eps = eps;
-
+		m_filter_resize_factor = filter_resize_factor;
 		m_light_pixel_vect.reserve(m_rows*m_cols);
 
 		m_in_frame = in_frame->clone();
@@ -288,7 +295,7 @@ namespace dehaze
 	}
 	void CHazeRemoval::guided_filter()
 	{
-		*m_cv_mat_guided_filter_output_ptr = guidedFilter(m_in_frame, *m_cv_mat_transmission_ptr, m_r, m_eps);
+		*m_cv_mat_guided_filter_output_ptr = guidedFilter(m_in_frame, *m_cv_mat_transmission_ptr, m_r, m_eps, m_filter_resize_factor);
 	}
 	void CHazeRemoval::recover()
 	{

@@ -1,9 +1,11 @@
 #ifndef HAZE_REMOVAL_H
 #define HAZE_REMOVAL_H
 
+#include <iostream>
+#include "ros/ros.h"
 #include "guided_filter.h"
 #include "opencv2/opencv.hpp"
-
+#include "opencv2/ximgproc.hpp"
 #include <vector>
 
 
@@ -25,7 +27,7 @@ namespace dehaze
 	{
 	public:
 		CHazeRemoval(const cv::Mat *in_frame,
-						double omega, double t0, int radius, int r, double eps);
+						double omega, double t0, int radius, int r, double eps, int filter_resize_factor);
 		~CHazeRemoval();
 		void Process(cv::Mat &out_frame, bool use_old_alg=false);
 	private:
@@ -47,7 +49,7 @@ namespace dehaze
 		double m_omega;
 		double m_t0;
 		double m_eps;
-
+		double m_filter_resize_factor;
 		cv::Mat m_in_frame;
 
 		cv::Vec3d *m_vec3d_avg_light_ptr = NULL;

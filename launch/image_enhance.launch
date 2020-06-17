@@ -20,7 +20,10 @@
     <param name="dehaze_t0" value="0.1" type="double" />
     <param name="dehaze_r" value="30" type="int" />
     <param name="dehaze_eps" value="0.01" type="double" />
+    <param name="dehaze_filter_resize_factor" value="4" type="int" />
     
+
+
     <param name="enable_clahe" value="true" type="bool" />
     <param name="clahe_clip_limit" value="3.0" type="double" />
     <param name="clahe_grid_size" value="6.0" type="double" />

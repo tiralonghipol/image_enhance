@@ -27,6 +27,8 @@ imageEnhance::imageEnhance(ros::NodeHandle &n, const std::string &s, int bufSize
 	n.getParam("dehaze_t0", m_t0);
 	n.getParam("dehaze_r", m_r);
 	n.getParam("dehaze_eps", m_eps);
+	n.getParam("dehaze_filter_resize_factor", m_filter_resize_factor);
+	
 	// clahe parameters
 	n.getParam("enable_clahe", _enable_clahe);
 	n.getParam("clahe_clip_limit", clahe::_clahe_clip_limit);
@@ -88,7 +90,7 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 				image_in = cv::Scalar::all(255) - image_in;
 
 
-				dehaze::CHazeRemoval hr(&image_in, m_omega, m_t0, m_radius, m_r, m_eps);
+				dehaze::CHazeRemoval hr(&image_in, m_omega, m_t0, m_radius, m_r, m_eps, m_filter_resize_factor);
 				hr.Process(image_out);				
 				image_out = cv::Scalar::all(255) - image_out;
 				ROS_INFO("Dehaze Process Time consumed : %f sec", (float)(clock() - new_alg_start) / CLOCKS_PER_SEC );
@@ -96,7 +98,7 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 
 				clock_t old_alg_start = clock();
 
-				dehaze::CHazeRemoval hr_OLD_ALG(&image_in, m_omega, m_t0, m_radius, m_r, m_eps);
+				dehaze::CHazeRemoval hr_OLD_ALG(&image_in, m_omega, m_t0, m_radius, m_r, m_eps, m_filter_resize_factor);
 				hr_OLD_ALG.Process(image_out_OLD_ALG);
 				image_out_OLD_ALG = cv::Scalar::all(255) - image_out_OLD_ALG;
 				ROS_INFO("Old Dehaze Process Time consumed : %f sec", (float)(clock() - old_alg_start) / CLOCKS_PER_SEC );
@@ -104,7 +106,7 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 				ROS_WARN_ONCE("Dehaze Enabled");
 				clock_t alg_start = clock();
 				Mat inverted_image =  cv::Scalar::all(255) - image_in;
-				dehaze::CHazeRemoval hr(&inverted_image, m_omega, m_t0, m_radius, m_r, m_eps);
+				dehaze::CHazeRemoval hr(&inverted_image, m_omega, m_t0, m_radius, m_r, m_eps, m_filter_resize_factor);
 				hr.Process(image_out);
 				image_out = cv::Scalar::all(255) - image_out;
 				ROS_INFO("Dehaze Process Time consumed : %f sec", (float)(clock() - alg_start) / CLOCKS_PER_SEC );
@@ -159,6 +161,7 @@ void imageEnhance::callback_dyn_reconf(image_enhance::ImageEnhanceConfig &config
 	m_t0 = config.dehaze_t0;
 	m_r = config.dehaze_r;
 	m_eps = config.dehaze_eps;
+	m_filter_resize_factor = config.dehaze_filter_resize_factor;
 
 	_enable_clahe = config.enable_clahe;
 	clahe::_clahe_clip_limit = config.clahe_clip_limit;
