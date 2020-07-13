@@ -5,12 +5,6 @@ namespace clahe
 
 	ClaheRos::ClaheRos()
 	{
-		//Get Param
-		// nh_private_.param<double>("clahe_clip_limit", clahe_clip_limit_, 2);
-		// nh_private_.param<double>("clahe_grid_size", clahe_grid_size_, 6);
-		//Setup Publishers and Subscribers
-		// image_pub_ = it_.advertise("/equalized_image", 5);
-		// image_sub_ = it_.subscribe("/image", 5, &ClaheRos::imageCb, this);
 	}
 
 	// void ClaheRos::imageCb(const sensor_msgs::ImageConstPtr &msg)

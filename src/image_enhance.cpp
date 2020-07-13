@@ -2,6 +2,7 @@
 #include "image_enhance/dehaze.h"
 #include "image_enhance/guided_filter.h"
 #include "image_enhance/clahe.h"
+#include "image_enhance/bpdhe.h"
 
 #define TEST_OPTIMIZATIONS false
 
@@ -20,7 +21,10 @@ imageEnhance::imageEnhance(ros::NodeHandle &n, const std::string &s, int bufSize
 	n.getParam("topic_image_input", _topic_image_input);
 	n.getParam("topic_image_output", _topic_image_output);
 	n.getParam("scale_factor", _scale_factor);
+
 	n.getParam("enable_dehaze", _enable_dehaze);
+	n.getParam("enable_clahe", _enable_clahe);
+	n.getParam("enable_bpdhe", _enable_bpdhe);
 	// dehaze parameters
 	n.getParam("dehaze_radius", m_radius);
 	n.getParam("dehaze_omega", m_omega);
@@ -28,7 +32,6 @@ imageEnhance::imageEnhance(ros::NodeHandle &n, const std::string &s, int bufSize
 	n.getParam("dehaze_r", m_r);
 	n.getParam("dehaze_eps", m_eps);
 	// clahe parameters
-	n.getParam("enable_clahe", _enable_clahe);
 	n.getParam("clahe_clip_limit", clahe::_clahe_clip_limit);
 	n.getParam("clahe_grid_size", clahe::_clahe_grid_size);
 
@@ -37,9 +40,6 @@ imageEnhance::imageEnhance(ros::NodeHandle &n, const std::string &s, int bufSize
 	_sub_image = it.subscribe(_topic_image_input, 1, &imageEnhance::callback_image_input, this);
 	// publishers
 	_pub_image = it.advertise(_topic_image_output, 1);
-	#if TEST_OPTIMIZATIONS
-	_old_pub_image = it.advertise(_topic_image_output + "_OLD_ALG", 1);
-	#endif
 }
 
 imageEnhance::~imageEnhance()
@@ -69,45 +69,17 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 				   CV_INTER_LINEAR);
 
 		Mat image_out(image_in.rows, image_in.cols, CV_8UC3);
-		Mat image_out_OLD_ALG(image_in.rows, image_in.cols, CV_8UC3);
-		if(!_enable_dehaze && !_enable_clahe)
-		{
-			image_out = image_in;
-			image_out_OLD_ALG = image_in;
-		}
-
-
-		clock_t start = clock();
-
+		// if (!_enable_dehaze && !_enable_clahe && !_enable_bpdhe)
+		// {
+		image_out = image_in;
+		// }
 		if (_enable_dehaze)
 		{
-			#if TEST_OPTIMIZATIONS
-				ROS_WARN_ONCE("Dehaze Enabled");
-				clock_t new_alg_start = clock();
-				image_in = cv::Scalar::all(255) - image_in;
-
-
-				dehaze::CHazeRemoval hr(&image_in, m_omega, m_t0, m_radius, m_r, m_eps);
-				hr.Process(image_out);				
-				image_out = cv::Scalar::all(255) - image_out;
-				ROS_INFO("Dehaze Process Time consumed : %f sec", (float)(clock() - new_alg_start) / CLOCKS_PER_SEC );
-
-
-				clock_t old_alg_start = clock();
-
-				dehaze::CHazeRemoval hr_OLD_ALG(&image_in, m_omega, m_t0, m_radius, m_r, m_eps);
-				hr_OLD_ALG.Process(image_out_OLD_ALG);
-				image_out_OLD_ALG = cv::Scalar::all(255) - image_out_OLD_ALG;
-				ROS_INFO("Old Dehaze Process Time consumed : %f sec", (float)(clock() - old_alg_start) / CLOCKS_PER_SEC );
-			#else
-				ROS_WARN_ONCE("Dehaze Enabled");
-				clock_t alg_start = clock();
-				image_in = cv::Scalar::all(255) - image_in;
-				dehaze::CHazeRemoval hr(&image_in, m_omega, m_t0, m_radius, m_r, m_eps);
-				hr.Process(image_out);
-				image_out = cv::Scalar::all(255) - image_out;
-				ROS_INFO("Dehaze Process Time consumed : %f sec", (float)(clock() - alg_start) / CLOCKS_PER_SEC );
-			#endif
+			ROS_WARN_ONCE("Dehaze Enabled");
+			image_in = cv::Scalar::all(255) - image_in;
+			dehaze::CHazeRemoval hr(&image_in, m_omega, m_t0, m_radius, m_r, m_eps);
+			hr.Process(image_out);
+			image_out = cv::Scalar::all(255) - image_out;
 		}
 		else
 		{
@@ -115,27 +87,32 @@ void imageEnhance::callback_image_input(const sensor_msgs::ImageConstPtr &msg)
 		}
 		if (_enable_clahe)
 		{
-			ROS_WARN_ONCE("Clahe Enabled");
+			ROS_WARN_ONCE("CLAHE Enabled");
 			clahe::ClaheRos cr;
 			image_out = cr.Process(image_in);
 		}
 		else
 		{
-			ROS_WARN_ONCE("Clahe Disabled");
+			ROS_WARN_ONCE("CLAHE Disabled");
 		}
-		clock_t end = clock();
-		ROS_DEBUG("Total Enhance Time consumed : %f sec", (float)(clock() - start) / CLOCKS_PER_SEC );
+		if (_enable_bpdhe)
+		{
+			ROS_WARN_ONCE("BPDHE Enabled");
+			bpdhe::bpdhe be;
+			image_out = be.Process(image_in);
+			// imshow("bpdhe", image_out);
+			// waitKey(1);
+		}
+		else
+		{
+			ROS_WARN_ONCE("BPDHE Disabled");
+		}
 
 		sensor_msgs::Image::Ptr output = cv_bridge::CvImage(msg->header, "bgr8", image_out).toImageMsg();
-		#if TEST_OPTIMIZATIONS 
-		sensor_msgs::Image::Ptr old_output = cv_bridge::CvImage(msg->header, "bgr8", image_out_OLD_ALG).toImageMsg(); 
-		#endif
+
 		if (_pub_image.getNumSubscribers() > 0)
 		{
 			_pub_image.publish(output);
-			#if TEST_OPTIMIZATIONS 
-			_old_pub_image.publish(old_output);
-			#endif
 		}
 	}
 	catch (cv::Exception &e)
@@ -151,13 +128,15 @@ void imageEnhance::callback_dyn_reconf(image_enhance::ImageEnhanceConfig &config
 	_scale_factor = config.scale_factor;
 
 	_enable_dehaze = config.enable_dehaze;
+	_enable_clahe = config.enable_clahe;
+	_enable_bpdhe = config.enable_bpdhe;
+
 	m_radius = config.dehaze_radius;
 	m_omega = config.dehaze_omega;
 	m_t0 = config.dehaze_t0;
 	m_r = config.dehaze_r;
 	m_eps = config.dehaze_eps;
 
-	_enable_clahe = config.enable_clahe;
 	clahe::_clahe_clip_limit = config.clahe_clip_limit;
 	clahe::_clahe_grid_size = config.clahe_grid_size;
 }

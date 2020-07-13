@@ -7,7 +7,7 @@
 #define GET_MIN(a,b)   a > b ? b : a
 #define GET_MAX(a,b)   a < b ? b : a
 
-#define SHOW_IMAGE_STEPS true
+#define SHOW_IMAGE_STEPS false
 
 namespace dehaze
 {

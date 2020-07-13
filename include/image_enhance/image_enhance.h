@@ -47,6 +47,7 @@ private:
     int _scale_factor;
     bool _enable_dehaze;
     bool _enable_clahe;
+    bool _enable_bpdhe;
 
     // Dehaze Params
     int m_radius;

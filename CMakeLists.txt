@@ -38,6 +38,9 @@ include_directories(
 add_library(${PROJECT_NAME} src/${PROJECT_NAME}.cpp)
 add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+# bpdhe
+add_library(bpdhe src/bpdhe.cpp)
+add_dependencies(bpdhe ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 # clahe
 add_library(clahe src/clahe.cpp)
 add_dependencies(clahe ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -65,6 +68,7 @@ ${OpenCV_LIBRARIES}
 clahe
 dehaze
 guided_filter
+bpdhe
 )
 
 
